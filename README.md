@@ -1,2 +1,2 @@
 # android-native-build
-Android Native Build
+Android native build scripts
