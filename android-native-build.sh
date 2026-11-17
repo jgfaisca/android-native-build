@@ -49,6 +49,29 @@ log()  { printf '\n[%s] %s\n' "INFO" "$*"; }
 warn() { printf '\n[%s] %s\n' "WARN" "$*" >&2; }
 die()  { printf '\n[%s] %s\n' "ERROR" "$*" >&2; exit 1; }
 
+is_version() {
+    [[ $1 =~ ^[0-9]+(\.[0-9]+)*$ ]]
+}
+
+version_leq() {
+    local -a a b
+    local IFS=.
+    read -ra a <<< "$1"
+    read -ra b <<< "$2"
+
+    local i n=${#a[@]}
+    (( ${#b[@]} > n )) && n=${#b[@]}
+
+    local x y
+    for ((i = 0; i < n; i++)); do
+        x=${a[i]:-0}
+        y=${b[i]:-0}
+        (( 10#$x < 10#$y )) && return 0
+        (( 10#$x > 10#$y )) && return 1
+    done
+    return 0
+}
+
 command -v javac >/dev/null 2>&1 || die "javac not found. Install a JDK and put it on PATH."
 command -v java  >/dev/null 2>&1 || die "java not found. Install a JDK and put it on PATH."
 command -v keytool >/dev/null 2>&1 || die "keytool not found. Install a JDK."
@@ -84,9 +107,10 @@ COMPILE_API="${COMPILE_SDK:-$DETECTED_API}"
 MIN_API="${MIN_SDK:-24}"
 TARGET_API="${TARGET_SDK:-$COMPILE_API}"
 
-[[ "$MIN_API" =~ ^[0-9]+$ ]] || die "MIN_SDK must be an integer."
-[[ "$TARGET_API" =~ ^[0-9]+$ ]] || die "TARGET_SDK must be an integer."
-(( MIN_API <= TARGET_API )) || die "MIN_SDK ($MIN_API) cannot exceed TARGET_SDK ($TARGET_API)."
+is_version "$MIN_API" || die "MIN_SDK must be a dotted numeric version."
+is_version "$TARGET_API" || die "TARGET_SDK must be a dotted numeric version."
+version_leq "$MIN_API" "$TARGET_API" ||
+    die "MIN_SDK ($MIN_API) cannot exceed TARGET_SDK ($TARGET_API)."
 
 # Choose a Build-Tools version. Explicit BUILD_TOOLS_VERSION takes precedence.
 if [[ -n "${BUILD_TOOLS_VERSION:-}" ]]; then
